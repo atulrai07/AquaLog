@@ -1,6 +1,5 @@
 package com.example.aqualog;
 
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -9,6 +8,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.aqualog.data.WaterDatabase;
+import com.example.aqualog.data.WaterLog;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -46,16 +48,15 @@ public class AddNowActivity extends AppCompatActivity {
                 int glasses = npGlasses.getValue(); // Get selected number of glasses
                 int totalAdded = glasses * 250;     // 250ml per glass
 
-                // Get SharedPreferences
-                SharedPreferences prefs = getSharedPreferences("water_prefs", MODE_PRIVATE);
-                int currentTotal = prefs.getInt("total_ml", 0);
-                int updatedTotal = currentTotal + totalAdded;
+                // Save to Room Database
+                long timestamp = System.currentTimeMillis();
+                WaterLog log = new WaterLog(timestamp, totalAdded);
 
-                // Save new total and timestamp
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putInt("total_ml", updatedTotal);
-                editor.putLong("last_time", System.currentTimeMillis());
-                editor.apply();
+                new Thread(() -> {
+                    WaterDatabase.getInstance(AddNowActivity.this)
+                            .waterLogDao()
+                            .insert(log);
+                }).start();
 
                 // Show confirmation
                 Toast.makeText(AddNowActivity.this, glasses + " glass(es) added!", Toast.LENGTH_SHORT).show();

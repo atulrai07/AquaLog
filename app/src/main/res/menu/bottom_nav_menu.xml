@@ -5,7 +5,8 @@
         android:icon="@drawable/outline_add_home_24"
         android:title="Home" />
     <item
-        android:id="@+id/nav_settings"
+        android:id="@+id/navigation_history"
         android:icon="@drawable/outline_add_box_24"
-        android:title="Settings" />
+        android:title="History" />
+
 </menu>

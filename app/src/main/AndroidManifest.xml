@@ -12,9 +12,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AquaLog">
 
-        <!-- 👇 ADD THIS LINE -->
+        <!-- History Activity -->
+        <activity android:name=".HistoryActivity" />
+
+        <!-- Add Now Activity -->
         <activity android:name=".AddNowActivity" />
 
+        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
