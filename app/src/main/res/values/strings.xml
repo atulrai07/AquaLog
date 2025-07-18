@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">AquaLog</string>
+
+    <string name="desc_glass_of_water">Glass of water icon</string>
+    <string name="add_now_button">Add Now</string>
+    <string name="today_progress_label">Today\'s Progress</string>
+    <string name="streak_progress_label">Streak Progress</string>
+</resources>
