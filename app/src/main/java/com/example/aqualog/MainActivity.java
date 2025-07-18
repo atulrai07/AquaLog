@@ -1,8 +1,16 @@
 package com.example.aqualog;
 
+import android.animation.ObjectAnimator;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.view.Gravity;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Animation;
+import android.view.animation.ScaleAnimation;
 import android.widget.Button;
+import android.widget.GridLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,6 +32,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvGreeting, tvLogTime, tvWaterLevel, tvProgressText, tvPercentage;
     private ProgressBar progressBar;
     private Button btnAddNow, btnReset;
+    private GridLayout gridStreak;
+    private int lastProgress = 0;  // Store previous progress for smooth animation
+    private Handler midnightHandler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         btnAddNow = findViewById(R.id.btnAddNow);
         btnReset = findViewById(R.id.btnReset);
+        gridStreak = findViewById(R.id.gridStreak);
 
         // Greeting
         tvGreeting.setText("Hi Atul 👋");
@@ -54,9 +66,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Initial UI load
         updateProgressUI();
+        populateStreakGrid();
+        scheduleMidnightRefresh();
 
+        // Bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
-
         bottomNavigationView.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.navigation_history) {
                 startActivity(new Intent(MainActivity.this, HistoryActivity.class));
@@ -64,18 +78,50 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
-
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        updateProgressUI(); // refresh data when returning
+        updateProgressUI();
+        populateStreakGrid();
+        scheduleMidnightRefresh();
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        midnightHandler.removeCallbacksAndMessages(null); // Stop handler when activity is paused
+    }
+
+    /**
+     * Schedule UI refresh at midnight
+     */
+    private void scheduleMidnightRefresh() {
+        midnightHandler.removeCallbacksAndMessages(null);
+        long now = System.currentTimeMillis();
+
+        Calendar nextMidnight = Calendar.getInstance();
+        nextMidnight.add(Calendar.DAY_OF_YEAR, 1);
+        nextMidnight.set(Calendar.HOUR_OF_DAY, 0);
+        nextMidnight.set(Calendar.MINUTE, 0);
+        nextMidnight.set(Calendar.SECOND, 0);
+        nextMidnight.set(Calendar.MILLISECOND, 0);
+
+        long delay = nextMidnight.getTimeInMillis() - now;
+
+        midnightHandler.postDelayed(() -> {
+            updateProgressUI();
+            populateStreakGrid();
+            scheduleMidnightRefresh(); // Reschedule for the next day
+        }, delay);
+    }
+
+    /**
+     * Updates the progress UI for today
+     */
     private void updateProgressUI() {
         new Thread(() -> {
-            // Get today's start time in millis
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.HOUR_OF_DAY, 0);
             calendar.set(Calendar.MINUTE, 0);
@@ -83,18 +129,15 @@ public class MainActivity extends AppCompatActivity {
             calendar.set(Calendar.MILLISECOND, 0);
             long startOfDay = calendar.getTimeInMillis();
 
-            // Query today's total from Room
             int totalMl = WaterDatabase.getInstance(this)
                     .waterLogDao()
                     .getTotalForDay(startOfDay);
 
-            // Get last log time
             long lastLogTime = WaterDatabase.getInstance(this)
                     .waterLogDao()
                     .getLastLogTime();
 
             runOnUiThread(() -> {
-                // Update last log time
                 if (lastLogTime != 0) {
                     String formattedTime = new SimpleDateFormat("hh:mm a", Locale.getDefault())
                             .format(new Date(lastLogTime));
@@ -103,20 +146,32 @@ public class MainActivity extends AppCompatActivity {
                     tvLogTime.setText("No log yet");
                 }
 
-                // Update dynamic texts and progress
                 tvProgressText.setText(totalMl + "ml of " + WATER_GOAL_ML + "ml");
                 tvWaterLevel.setText("Progress: " + totalMl + " ml");
 
                 int percent = (int) ((totalMl / (float) WATER_GOAL_ML) * 100);
-                progressBar.setProgress(percent);
+                animateProgressBar(percent);
                 tvPercentage.setText(percent + "%");
             });
         }).start();
     }
 
+    /**
+     * Smooth animation for ProgressBar
+     */
+    private void animateProgressBar(int newProgress) {
+        ObjectAnimator animator = ObjectAnimator.ofInt(progressBar, "progress", lastProgress, newProgress);
+        animator.setDuration(700);
+        animator.setInterpolator(new AccelerateDecelerateInterpolator());
+        animator.start();
+        lastProgress = newProgress;
+    }
+
+    /**
+     * Resets today's water logs
+     */
     private void resetTodayLogs() {
         new Thread(() -> {
-            // Get today's start time
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.HOUR_OF_DAY, 0);
             calendar.set(Calendar.MINUTE, 0);
@@ -124,14 +179,82 @@ public class MainActivity extends AppCompatActivity {
             calendar.set(Calendar.MILLISECOND, 0);
             long startOfDay = calendar.getTimeInMillis();
 
-            // Delete today's logs
             WaterDatabase.getInstance(this)
                     .waterLogDao()
                     .deleteLogsFromDay(startOfDay);
 
             runOnUiThread(() -> {
                 updateProgressUI();
+                populateStreakGrid();
                 Toast.makeText(MainActivity.this, "Today's progress reset!", Toast.LENGTH_SHORT).show();
+            });
+        }).start();
+    }
+
+    /**
+     * Populates the streak grid with animations
+     */
+    private void populateStreakGrid() {
+        new Thread(() -> {
+            Calendar calendar = Calendar.getInstance();
+            String[] days = new String[7];
+            int[] dailyTotals = new int[7];
+
+            for (int i = 6; i >= 0; i--) {
+                Calendar dayCal = (Calendar) calendar.clone();
+                dayCal.add(Calendar.DAY_OF_YEAR, -i);
+                dayCal.set(Calendar.HOUR_OF_DAY, 0);
+                dayCal.set(Calendar.MINUTE, 0);
+                dayCal.set(Calendar.SECOND, 0);
+                dayCal.set(Calendar.MILLISECOND, 0);
+                long startOfDay = dayCal.getTimeInMillis();
+
+                int total = WaterDatabase.getInstance(this)
+                        .waterLogDao()
+                        .getTotalForDay(startOfDay);
+
+                dailyTotals[6 - i] = total;
+                days[6 - i] = new SimpleDateFormat("EEE", Locale.getDefault())
+                        .format(new Date(startOfDay));
+            }
+
+            int todayIndex = 6; // Last entry is today
+
+            runOnUiThread(() -> {
+                gridStreak.removeAllViews();
+
+                for (int i = 0; i < 7; i++) {
+                    TextView dayView = new TextView(this);
+                    dayView.setText(days[i]);
+                    dayView.setGravity(Gravity.CENTER);
+                    dayView.setTextColor(Color.WHITE);
+                    dayView.setTextSize(14);
+
+                    if (i == todayIndex && dailyTotals[i] >= WATER_GOAL_ML) {
+                        dayView.setBackgroundColor(Color.parseColor("#2196F3"));
+                    } else {
+                        dayView.setBackgroundColor(Color.GRAY);
+                    }
+
+                    GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+                    params.width = 0;
+                    params.height = GridLayout.LayoutParams.WRAP_CONTENT;
+                    params.columnSpec = GridLayout.spec(i % 7, 1f);
+                    params.setMargins(8, 8, 8, 8);
+                    dayView.setLayoutParams(params);
+                    dayView.setPadding(16, 16, 16, 16);
+
+                    gridStreak.addView(dayView);
+
+                    // Add fade + scale animation
+                    Animation scaleAnim = new ScaleAnimation(
+                            0.8f, 1f, 0.8f, 1f,
+                            Animation.RELATIVE_TO_SELF, 0.5f,
+                            Animation.RELATIVE_TO_SELF, 0.5f
+                    );
+                    scaleAnim.setDuration(300);
+                    dayView.startAnimation(scaleAnim);
+                }
             });
         }).start();
     }
