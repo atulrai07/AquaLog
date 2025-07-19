@@ -1,10 +1,14 @@
 package com.example.aqualog;
 
 import android.animation.ObjectAnimator;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
@@ -28,12 +32,13 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private static final int WATER_GOAL_ML = 2000;
+    private static final int REQUEST_EXACT_ALARM = 5001;
 
     private TextView tvGreeting, tvLogTime, tvWaterLevel, tvProgressText, tvPercentage;
     private ProgressBar progressBar;
     private Button btnAddNow, btnReset;
     private GridLayout gridStreak;
-    private int lastProgress = 0;  // Store previous progress for smooth animation
+    private int lastProgress = 0;
     private Handler midnightHandler = new Handler();
 
     @Override
@@ -69,6 +74,9 @@ public class MainActivity extends AppCompatActivity {
         populateStreakGrid();
         scheduleMidnightRefresh();
 
+        // Check and schedule reminders
+        checkAndScheduleReminders();
+
         // Bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setOnItemSelectedListener(item -> {
@@ -91,7 +99,58 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        midnightHandler.removeCallbacksAndMessages(null); // Stop handler when activity is paused
+        midnightHandler.removeCallbacksAndMessages(null);
+    }
+
+    /**
+     * Check and request exact alarm permission if needed (Android 12+).
+     */
+    private void checkAndScheduleReminders() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12+
+            AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Toast.makeText(this, "Please allow exact alarms for water reminders.", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                startActivity(intent);
+                return;
+            }
+        }
+        scheduleWaterReminders();
+    }
+
+    /**
+     * Schedule water reminders (3 PM, 7 PM, 9 PM)
+     */
+    private void scheduleWaterReminders() {
+        scheduleReminder(15, 0, 1001);
+        scheduleReminder(19, 0, 1002);
+        scheduleReminder(21, 0, 1003);
+    }
+
+    private void scheduleReminder(int hour, int minute, int requestCode) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, hour);
+        calendar.set(Calendar.MINUTE, minute);
+        calendar.set(Calendar.SECOND, 0);
+
+        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        Intent intent = new Intent(this, WaterReminderReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        try {
+            alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    pendingIntent
+            );
+        } catch (SecurityException e) {
+            Toast.makeText(this, "Cannot schedule reminder: Missing permission.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
@@ -113,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
         midnightHandler.postDelayed(() -> {
             updateProgressUI();
             populateStreakGrid();
-            scheduleMidnightRefresh(); // Reschedule for the next day
+            scheduleMidnightRefresh();
         }, delay);
     }
 
@@ -218,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
                         .format(new Date(startOfDay));
             }
 
-            int todayIndex = 6; // Last entry is today
+            int todayIndex = 6;
 
             runOnUiThread(() -> {
                 gridStreak.removeAllViews();
@@ -246,7 +305,6 @@ public class MainActivity extends AppCompatActivity {
 
                     gridStreak.addView(dayView);
 
-                    // Add fade + scale animation
                     Animation scaleAnim = new ScaleAnimation(
                             0.8f, 1f, 0.8f, 1f,
                             Animation.RELATIVE_TO_SELF, 0.5f,
