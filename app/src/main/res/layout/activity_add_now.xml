@@ -52,7 +52,16 @@
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="@color/blue_primary"
-        android:layout_marginBottom="32dp" />
+        android:layout_marginBottom="2dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1 Glass = 200ml "
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/blue_primary"
+        android:layout_marginBottom="2dp" />
 
     <!-- Save Button -->
     <Button

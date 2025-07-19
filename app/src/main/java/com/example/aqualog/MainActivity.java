@@ -1,319 +1,64 @@
 package com.example.aqualog;
 
-import android.animation.ObjectAnimator;
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Intent;
-import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.provider.Settings;
-import android.view.Gravity;
-import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.Animation;
-import android.view.animation.ScaleAnimation;
-import android.widget.Button;
-import android.widget.GridLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
-
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.example.aqualog.data.WaterDatabase;
+import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int WATER_GOAL_ML = 2000;
-    private static final int REQUEST_EXACT_ALARM = 5001;
-
-    private TextView tvGreeting, tvLogTime, tvWaterLevel, tvProgressText, tvPercentage;
-    private ProgressBar progressBar;
-    private Button btnAddNow, btnReset;
-    private GridLayout gridStreak;
-    private int lastProgress = 0;
-    private Handler midnightHandler = new Handler();
+    private BottomNavigationView bottomNavigationView;
+    private int currentItemId = R.id.nav_home; // Default to Home
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // View bindings
-        tvGreeting = findViewById(R.id.tvGreeting);
-        tvLogTime = findViewById(R.id.tvLogTime);
-        tvWaterLevel = findViewById(R.id.tvWaterLevel);
-        tvProgressText = findViewById(R.id.tvProgressText);
-        tvPercentage = findViewById(R.id.tvPercentage);
-        progressBar = findViewById(R.id.progressBar);
-        btnAddNow = findViewById(R.id.btnAddNow);
-        btnReset = findViewById(R.id.btnReset);
-        gridStreak = findViewById(R.id.gridStreak);
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        // Greeting
-        tvGreeting.setText("Hi Atul 👋");
+        // Load HomeFragment as default
+        if (savedInstanceState == null) {
+            loadFragment(new HomeFragment(), false, true);
+        }
 
-        // Add Now Button
-        btnAddNow.setOnClickListener(view -> {
-            Intent intent = new Intent(MainActivity.this, AddNowActivity.class);
-            startActivity(intent);
-        });
-
-        // Reset Button
-        btnReset.setOnClickListener(view -> resetTodayLogs());
-
-        // Initial UI load
-        updateProgressUI();
-        populateStreakGrid();
-        scheduleMidnightRefresh();
-
-        // Check and schedule reminders
-        checkAndScheduleReminders();
-
-        // Bottom navigation
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        // Bottom navigation item selection
         bottomNavigationView.setOnItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.navigation_history) {
-                startActivity(new Intent(MainActivity.this, HistoryActivity.class));
+            Fragment selectedFragment = null;
+            int itemId = item.getItemId();
+
+            if (itemId == R.id.nav_home) {
+                selectedFragment = new HomeFragment();
+            } else if (itemId == R.id.navigation_history) {
+                selectedFragment = new HistoryFragment();
+            }
+
+            if (selectedFragment != null) {
+                boolean forward = itemId > currentItemId; // Decide direction
+                loadFragment(selectedFragment, true, forward);
+                currentItemId = itemId;
                 return true;
             }
             return false;
         });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        updateProgressUI();
-        populateStreakGrid();
-        scheduleMidnightRefresh();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        midnightHandler.removeCallbacksAndMessages(null);
-    }
-
-    /**
-     * Check and request exact alarm permission if needed (Android 12+).
-     */
-    private void checkAndScheduleReminders() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12+
-            AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-            if (!alarmManager.canScheduleExactAlarms()) {
-                Toast.makeText(this, "Please allow exact alarms for water reminders.", Toast.LENGTH_LONG).show();
-                Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
-                startActivity(intent);
-                return;
-            }
+    private void loadFragment(@NonNull Fragment fragment, boolean withAnimation, boolean forward) {
+        if (withAnimation) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .setCustomAnimations(
+                            forward ? R.anim.slide_in_right : R.anim.slide_in_left,
+                            forward ? R.anim.slide_out_left : R.anim.slide_out_right
+                    )
+                    .replace(R.id.fragment_container, fragment)
+                    .commit();
+        } else {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragment_container, fragment)
+                    .commit();
         }
-        scheduleWaterReminders();
-    }
-
-    /**
-     * Schedule water reminders (3 PM, 7 PM, 9 PM)
-     */
-    private void scheduleWaterReminders() {
-        scheduleReminder(15, 0, 1001);
-        scheduleReminder(19, 0, 1002);
-        scheduleReminder(21, 0, 1003);
-    }
-
-    private void scheduleReminder(int hour, int minute, int requestCode) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, hour);
-        calendar.set(Calendar.MINUTE, minute);
-        calendar.set(Calendar.SECOND, 0);
-
-        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1);
-        }
-
-        Intent intent = new Intent(this, WaterReminderReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-        try {
-            alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.getTimeInMillis(),
-                    pendingIntent
-            );
-        } catch (SecurityException e) {
-            Toast.makeText(this, "Cannot schedule reminder: Missing permission.", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * Schedule UI refresh at midnight
-     */
-    private void scheduleMidnightRefresh() {
-        midnightHandler.removeCallbacksAndMessages(null);
-        long now = System.currentTimeMillis();
-
-        Calendar nextMidnight = Calendar.getInstance();
-        nextMidnight.add(Calendar.DAY_OF_YEAR, 1);
-        nextMidnight.set(Calendar.HOUR_OF_DAY, 0);
-        nextMidnight.set(Calendar.MINUTE, 0);
-        nextMidnight.set(Calendar.SECOND, 0);
-        nextMidnight.set(Calendar.MILLISECOND, 0);
-
-        long delay = nextMidnight.getTimeInMillis() - now;
-
-        midnightHandler.postDelayed(() -> {
-            updateProgressUI();
-            populateStreakGrid();
-            scheduleMidnightRefresh();
-        }, delay);
-    }
-
-    /**
-     * Updates the progress UI for today
-     */
-    private void updateProgressUI() {
-        new Thread(() -> {
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
-            long startOfDay = calendar.getTimeInMillis();
-
-            int totalMl = WaterDatabase.getInstance(this)
-                    .waterLogDao()
-                    .getTotalForDay(startOfDay);
-
-            long lastLogTime = WaterDatabase.getInstance(this)
-                    .waterLogDao()
-                    .getLastLogTime();
-
-            runOnUiThread(() -> {
-                if (lastLogTime != 0) {
-                    String formattedTime = new SimpleDateFormat("hh:mm a", Locale.getDefault())
-                            .format(new Date(lastLogTime));
-                    tvLogTime.setText(formattedTime);
-                } else {
-                    tvLogTime.setText("No log yet");
-                }
-
-                tvProgressText.setText(totalMl + "ml of " + WATER_GOAL_ML + "ml");
-                tvWaterLevel.setText("Progress: " + totalMl + " ml");
-
-                int percent = (int) ((totalMl / (float) WATER_GOAL_ML) * 100);
-                animateProgressBar(percent);
-                tvPercentage.setText(percent + "%");
-            });
-        }).start();
-    }
-
-    /**
-     * Smooth animation for ProgressBar
-     */
-    private void animateProgressBar(int newProgress) {
-        ObjectAnimator animator = ObjectAnimator.ofInt(progressBar, "progress", lastProgress, newProgress);
-        animator.setDuration(700);
-        animator.setInterpolator(new AccelerateDecelerateInterpolator());
-        animator.start();
-        lastProgress = newProgress;
-    }
-
-    /**
-     * Resets today's water logs
-     */
-    private void resetTodayLogs() {
-        new Thread(() -> {
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
-            long startOfDay = calendar.getTimeInMillis();
-
-            WaterDatabase.getInstance(this)
-                    .waterLogDao()
-                    .deleteLogsFromDay(startOfDay);
-
-            runOnUiThread(() -> {
-                updateProgressUI();
-                populateStreakGrid();
-                Toast.makeText(MainActivity.this, "Today's progress reset!", Toast.LENGTH_SHORT).show();
-            });
-        }).start();
-    }
-
-    /**
-     * Populates the streak grid with animations
-     */
-    private void populateStreakGrid() {
-        new Thread(() -> {
-            Calendar calendar = Calendar.getInstance();
-            String[] days = new String[7];
-            int[] dailyTotals = new int[7];
-
-            for (int i = 6; i >= 0; i--) {
-                Calendar dayCal = (Calendar) calendar.clone();
-                dayCal.add(Calendar.DAY_OF_YEAR, -i);
-                dayCal.set(Calendar.HOUR_OF_DAY, 0);
-                dayCal.set(Calendar.MINUTE, 0);
-                dayCal.set(Calendar.SECOND, 0);
-                dayCal.set(Calendar.MILLISECOND, 0);
-                long startOfDay = dayCal.getTimeInMillis();
-
-                int total = WaterDatabase.getInstance(this)
-                        .waterLogDao()
-                        .getTotalForDay(startOfDay);
-
-                dailyTotals[6 - i] = total;
-                days[6 - i] = new SimpleDateFormat("EEE", Locale.getDefault())
-                        .format(new Date(startOfDay));
-            }
-
-            int todayIndex = 6;
-
-            runOnUiThread(() -> {
-                gridStreak.removeAllViews();
-
-                for (int i = 0; i < 7; i++) {
-                    TextView dayView = new TextView(this);
-                    dayView.setText(days[i]);
-                    dayView.setGravity(Gravity.CENTER);
-                    dayView.setTextColor(Color.WHITE);
-                    dayView.setTextSize(14);
-
-                    if (i == todayIndex && dailyTotals[i] >= WATER_GOAL_ML) {
-                        dayView.setBackgroundColor(Color.parseColor("#2196F3"));
-                    } else {
-                        dayView.setBackgroundColor(Color.GRAY);
-                    }
-
-                    GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-                    params.width = 0;
-                    params.height = GridLayout.LayoutParams.WRAP_CONTENT;
-                    params.columnSpec = GridLayout.spec(i % 7, 1f);
-                    params.setMargins(8, 8, 8, 8);
-                    dayView.setLayoutParams(params);
-                    dayView.setPadding(16, 16, 16, 16);
-
-                    gridStreak.addView(dayView);
-
-                    Animation scaleAnim = new ScaleAnimation(
-                            0.8f, 1f, 0.8f, 1f,
-                            Animation.RELATIVE_TO_SELF, 0.5f,
-                            Animation.RELATIVE_TO_SELF, 0.5f
-                    );
-                    scaleAnim.setDuration(300);
-                    dayView.startAnimation(scaleAnim);
-                }
-            });
-        }).start();
     }
 }
