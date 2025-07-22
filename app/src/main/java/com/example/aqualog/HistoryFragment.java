@@ -1,10 +1,12 @@
 package com.example.aqualog;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,8 +68,12 @@ public class HistoryFragment extends Fragment {
                     recyclerView.setVisibility(View.VISIBLE);
 
                     if (adapter == null) {
-                        adapter = new HistoryAdapter(logs);
+                        adapter = new HistoryAdapter(requireContext(), logs);
                         recyclerView.setAdapter(adapter);
+
+                        adapter.setOnDeleteClickListener((position, log) -> {
+                            showDeleteConfirmation(log, position);
+                        });
                     } else {
                         adapter.updateData(logs);
                     }
@@ -77,58 +83,34 @@ public class HistoryFragment extends Fragment {
     }
 
     /**
-     * Adapter class for the history RecyclerView.
+     * Shows a confirmation dialog before deleting a log.
      */
-    private static class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder> {
-        private List<WaterLog> logList;
+    private void showDeleteConfirmation(WaterLog log, int position) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Delete Entry")
+                .setMessage("Are you sure you want to delete this log?")
+                .setPositiveButton("Delete", (dialog, which) -> deleteLog(log, position))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
 
-        HistoryAdapter(List<WaterLog> logList) {
-            this.logList = logList;
-        }
+    /**
+     * Deletes a log entry from the database and updates the RecyclerView.
+     */
+    private void deleteLog(WaterLog log, int position) {
+        new Thread(() -> {
+            WaterDatabase.getInstance(requireContext())
+                    .waterLogDao()
+                    .deleteLogById(log.id);  // Ensure WaterLog has an 'id' field.
 
-        @NonNull
-        @Override
-        public HistoryViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_history, parent, false);
-            return new HistoryViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull HistoryViewHolder holder, int position) {
-            WaterLog log = logList.get(position);
-
-            // Use public fields directly
-            String date = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                    .format(new Date(log.timestamp));
-
-            String time = new SimpleDateFormat("hh:mm a", Locale.getDefault())
-                    .format(new Date(log.timestamp));
-
-            holder.tvDate.setText(date);
-            holder.tvTime.setText(time);
-            holder.tvAmount.setText(log.amount + " ml");
-        }
-
-        @Override
-        public int getItemCount() {
-            return logList.size();
-        }
-
-        void updateData(List<WaterLog> newLogs) {
-            this.logList = newLogs;
-            notifyDataSetChanged();
-        }
-
-        static class HistoryViewHolder extends RecyclerView.ViewHolder {
-            TextView tvDate, tvTime, tvAmount;
-
-            HistoryViewHolder(View itemView) {
-                super(itemView);
-                tvDate = itemView.findViewById(R.id.tvDate);
-                tvTime = itemView.findViewById(R.id.tvTime);
-                tvAmount = itemView.findViewById(R.id.tvAmount);
-            }
-        }
+            requireActivity().runOnUiThread(() -> {
+                adapter.removeItem(position);
+                Toast.makeText(requireContext(), "Log deleted", Toast.LENGTH_SHORT).show();
+                if (adapter.getItemCount() == 0) {
+                    tvNoData.setVisibility(View.VISIBLE);
+                    recyclerView.setVisibility(View.GONE);
+                }
+            });
+        }).start();
     }
 }

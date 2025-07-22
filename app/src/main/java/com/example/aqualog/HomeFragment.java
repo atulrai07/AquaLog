@@ -33,7 +33,7 @@ import java.util.Locale;
 
 public class HomeFragment extends Fragment {
 
-    private static final int WATER_GOAL_ML = 4000;  // Updated daily goal
+    private static final int WATER_GOAL_ML = 3700;  // Updated daily goal
     private static final int REQUEST_EXACT_ALARM = 5001;
 
     private TextView tvGreeting, tvLogTime, tvWaterLevel, tvProgressText, tvPercentage;
@@ -165,15 +165,38 @@ public class HomeFragment extends Fragment {
 
         midnightHandler.postDelayed(() -> {
             if (!isAdded()) return;
-            updateProgressUI(); // Reset daily progress
+            resetDailyProgressOnly();  // Reset daily progress only
 
             Calendar today = Calendar.getInstance();
             if (today.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
                 resetStreakGridForNewWeek();
+            } else {
+                updateProgressUI(); // Refresh UI for new day
             }
 
             scheduleMidnightRefresh(); // Reschedule for next midnight
         }, delay);
+    }
+
+    /**
+     * Clears daily progress logs without affecting streak grid.
+     */
+    private void resetDailyProgressOnly() {
+        Context context = getContext();
+        if (context == null) return;
+
+        new Thread(() -> {
+            Calendar calendar = Calendar.getInstance();
+            calendar.set(Calendar.HOUR_OF_DAY, 0);
+            calendar.set(Calendar.MINUTE, 0);
+            calendar.set(Calendar.SECOND, 0);
+            calendar.set(Calendar.MILLISECOND, 0);
+            long startOfDay = calendar.getTimeInMillis();
+
+            WaterDatabase.getInstance(context)
+                    .waterLogDao()
+                    .deleteLogsFromDay(startOfDay);
+        }).start();
     }
 
     /**

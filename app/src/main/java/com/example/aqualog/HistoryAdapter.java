@@ -71,6 +71,18 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.HistoryV
         return logs.size();
     }
 
+    public void updateData(List<WaterLog> newLogs) {
+        this.logs = newLogs;
+        notifyDataSetChanged();
+    }
+
+    public void removeItem(int position) {
+        if (position >= 0 && position < logs.size()) {
+            logs.remove(position);
+            notifyItemRemoved(position);
+        }
+    }
+
     static class HistoryViewHolder extends RecyclerView.ViewHolder {
         TextView tvDate, tvTime, tvAmount;
         ImageButton btnDelete;

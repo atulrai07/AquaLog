@@ -26,24 +26,27 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Hi Atul 👋"
-                android:textSize="22sp"
+                android:textSize="32sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary_black"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="16dp"
+                android:layout_gravity="start"
+                android:layout_marginStart="15sp"/>
 
             <!-- Card: Last Log -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="2dp"
                 android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/card_background_white">
+                app:cardBackgroundColor="@color/card_background_white"
+                android:layout_marginTop="12dp">
 
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp">
+                    android:padding="36dp">
 
                     <!-- Left Info -->
                     <LinearLayout
@@ -58,7 +61,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="09:00 AM"
-                            android:textSize="18sp"
+                            android:textSize="26sp"
                             android:textColor="@color/text_primary_black"
                             android:textStyle="bold"
                             android:layout_marginBottom="4dp" />
@@ -68,52 +71,32 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Progress: 0 ml"
-                            android:textSize="16sp"
+                            android:textSize="20sp"
                             android:textColor="@color/text_secondary_gray" />
                     </LinearLayout>
 
                     <!-- Glass Icon -->
                     <ImageView
                         android:id="@+id/imageGlass"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
                         android:layout_alignParentEnd="true"
                         android:layout_centerVertical="true"
-                        android:src="@drawable/outline_aq_24"
+                        android:src="@drawable/drink_11625275"
                         android:contentDescription="@string/desc_glass_of_water" />
                 </RelativeLayout>
             </androidx.cardview.widget.CardView>
 
             <!-- Add Now Button -->
-            <Button
-                android:id="@+id/btnAddNow"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/add_now_button"
-                android:paddingHorizontal="24dp"
-                android:paddingVertical="12dp"
-                android:textSize="16sp"
-                android:textColor="@color/text_on_accent_white"
-                app:backgroundTint="@color/accent_blue"
-                android:elevation="4dp"
-                android:layout_marginBottom="2dp" />
 
             <!-- Reset Button -->
-            <Button
-                android:id="@+id/btnReset"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Reset"
-                android:backgroundTint="@color/design_default_color_error"
-                android:textColor="@android:color/white"
-                android:layout_marginBottom="24dp" />
 
             <!-- Progress Card -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="2dp"
                 app:cardBackgroundColor="@color/card_background_white"
                 android:layout_marginBottom="24dp">
 
@@ -121,7 +104,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="26dp">
 
                     <TextView
                         android:id="@+id/tvProgressLabel"
@@ -172,6 +155,28 @@
             </androidx.cardview.widget.CardView>
 
             <!-- Streak -->
+            <Button
+                android:id="@+id/btnAddNow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:elevation="4dp"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="12dp"
+                android:text="@string/add_now_button"
+                android:textColor="@color/text_on_accent_white"
+                android:textSize="16sp"
+                app:backgroundTint="@color/accent_blue" />
+
+            <Button
+                android:id="@+id/btnReset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:backgroundTint="@color/design_default_color_error"
+                android:text="Reset"
+                android:textColor="@android:color/white" />
+
             <TextView
                 android:id="@+id/tvStreakLabel"
                 android:layout_width="wrap_content"
@@ -185,10 +190,11 @@
             <GridLayout
                 android:id="@+id/gridStreak"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="150dp"
                 android:columnCount="7"
                 android:rowCount="6"
                 android:background="@android:color/transparent" />
+
         </LinearLayout>
     </ScrollView>
 
