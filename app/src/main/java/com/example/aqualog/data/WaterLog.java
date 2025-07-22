@@ -7,11 +7,12 @@ import androidx.room.PrimaryKey;
 public class WaterLog {
 
     @PrimaryKey(autoGenerate = true)
-    public int id;
+    public int id;           // Unique ID for each log
 
-    public long timestamp; // Time of log (in millis)
-    public int amount;     // Amount in ml
+    public int amount;       // Water amount in ml
+    public long timestamp;   // Log timestamp in milliseconds
 
+    // Constructor updated to match usage: (timestamp, amount)
     public WaterLog(long timestamp, int amount) {
         this.timestamp = timestamp;
         this.amount = amount;

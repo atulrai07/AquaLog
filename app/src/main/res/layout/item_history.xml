@@ -11,35 +11,53 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/tvDate"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="12 July 2025"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary_black"
-            android:textStyle="bold" />
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tvTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="09:15 AM"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary_gray"
-            android:layout_marginTop="4dp" />
+            <TextView
+                android:id="@+id/tvDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="12 July 2025"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary_black"
+                android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/tvAmount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="200 ml"
-            android:textSize="14sp"
-            android:textColor="@color/accent_blue"
-            android:textStyle="bold"
-            android:layout_marginTop="4dp" />
+            <TextView
+                android:id="@+id/tvTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="09:15 AM"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary_gray"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/tvAmount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="200 ml"
+                android:textSize="14sp"
+                android:textColor="@color/accent_blue"
+                android:textStyle="bold"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:src="@android:drawable/ic_menu_delete"
+            android:contentDescription="Delete Log"
+            android:tint="@android:color/holo_red_dark" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>

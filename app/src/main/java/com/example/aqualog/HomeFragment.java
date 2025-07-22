@@ -33,7 +33,7 @@ import java.util.Locale;
 
 public class HomeFragment extends Fragment {
 
-    private static final int WATER_GOAL_ML = 3700;  // Updated daily goal to 3700 ml
+    private static final int WATER_GOAL_ML = 4000;  // Updated daily goal
     private static final int REQUEST_EXACT_ALARM = 5001;
 
     private TextView tvGreeting, tvLogTime, tvWaterLevel, tvProgressText, tvPercentage;
@@ -147,6 +147,9 @@ public class HomeFragment extends Fragment {
         }
     }
 
+    /**
+     * Midnight reset: Resets progress daily and streak grid only on Sundays.
+     */
     private void scheduleMidnightRefresh() {
         midnightHandler.removeCallbacksAndMessages(null);
         long now = System.currentTimeMillis();
@@ -162,10 +165,25 @@ public class HomeFragment extends Fragment {
 
         midnightHandler.postDelayed(() -> {
             if (!isAdded()) return;
-            updateProgressUI();
-            populateStreakGrid();
-            scheduleMidnightRefresh();
+            updateProgressUI(); // Reset daily progress
+
+            Calendar today = Calendar.getInstance();
+            if (today.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                resetStreakGridForNewWeek();
+            }
+
+            scheduleMidnightRefresh(); // Reschedule for next midnight
         }, delay);
+    }
+
+    /**
+     * Clears the streak grid at the start of a new week (Sunday midnight).
+     */
+    private void resetStreakGridForNewWeek() {
+        requireActivity().runOnUiThread(() -> {
+            gridStreak.removeAllViews();
+            Toast.makeText(getContext(), "New week started. Streak reset!", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void updateProgressUI() {
@@ -240,7 +258,6 @@ public class HomeFragment extends Fragment {
             requireActivity().runOnUiThread(() -> {
                 if (!isAdded()) return;
                 updateProgressUI();
-                populateStreakGrid();
                 Toast.makeText(getContext(), "Today's progress reset!", Toast.LENGTH_SHORT).show();
             });
         }).start();

@@ -25,7 +25,11 @@ public interface WaterLogDao {
     @Query("DELETE FROM water_logs WHERE timestamp >= :startOfDay")
     void deleteLogsFromDay(long startOfDay);
 
-    // Optional: Get all logs (useful for debugging or showing history)
+    // Delete a single log entry by its ID
+    @Query("DELETE FROM water_logs WHERE id = :logId")
+    void deleteLogById(int logId);
+
+    // Get all logs (for history display)
     @Query("SELECT * FROM water_logs ORDER BY timestamp DESC")
     List<WaterLog> getAllLogs();
 }
